@@ -1,0 +1,135 @@
+#include<ESP8266WiFi.h>
+#include"Adafruit_MQTT_Client.h"
+#define wifi "WiFi name"
+#define password "password"
+#define server "io.adafruit.com"
+#define port 1883
+#define username "********"
+#define key "***************************"
+#define ldr A0
+#define ir D3
+#define Relay1            D6
+#define Relay2            D2
+#define Relay3            D1
+#define Relay4            D5
+WiFiClient esp;
+Adafruit_MQTT_Client mqtt(&esp,server,port,username,key);
+
+Adafruit_MQTT_Publish feed= Adafruit_MQTT_Publish(&mqtt,username"/feeds/ldrsensor");
+Adafruit_MQTT_Publish irs= Adafruit_MQTT_Publish(&mqtt,username"/feeds/irsensor");
+
+Adafruit_MQTT_Subscribe light1 =Adafruit_MQTT_Subscribe(&mqtt,username"/feeds/light1");
+Adafruit_MQTT_Subscribe light2 =Adafruit_MQTT_Subscribe(&mqtt,username"/feeds/light2");
+Adafruit_MQTT_Subscribe fan1 =Adafruit_MQTT_Subscribe(&mqtt,username"/feeds/fan1");
+Adafruit_MQTT_Subscribe fan2 =Adafruit_MQTT_Subscribe(&mqtt,username"/feeds/fan2");
+void setup()
+{
+  Serial.begin(115200);
+  delay(10);
+  Serial.println("Adafruit MQTT");
+  Serial.println();
+  Serial.println();
+  Serial.print("cONNECTINg to ");
+  Serial.println(wifi);
+  WiFi.begin(wifi,password);
+ 
+  pinMode(Relay1, OUTPUT);
+  pinMode(Relay2, OUTPUT);
+  pinMode(Relay3, OUTPUT);
+  pinMode(Relay4, OUTPUT);
+  
+  while(WiFi.status()!= WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  Serial.println("WiFi connected");
+  Serial.println("IP address");
+  Serial.println(WiFi.localIP());
+  mqtt.subscribe(&light1);
+  mqtt.subscribe(&fan1);
+  mqtt.subscribe(&light2);
+  mqtt.subscribe(&fan2);
+  Serial.println("connecting to MQTT");
+  while(mqtt.connect())
+  {
+    delay(500);
+    Serial.println(".");
+  }
+}
+  void loop()
+  {
+  Adafruit_MQTT_Subscribe *subscription;
+    
+     while ((subscription = mqtt.readSubscription(5000))) 
+     {
+    if (subscription == &light1) 
+    {
+      Serial.print(F("Got: "));
+      Serial.println((char *)light1.lastread);
+      int light1_State = atoi((char *)light1.lastread);
+      digitalWrite(Relay1, light1_State);
+      
+    }
+    if (subscription == &light2) 
+    {
+      Serial.print(F("Got: "));
+      Serial.println((char *)light2.lastread);
+      int light2_State = atoi((char *)light2.lastread);
+      digitalWrite(Relay2, light2_State);
+    }
+    if (subscription == &fan1)
+    {
+      Serial.print(F("Got: "));
+      Serial.println((char *)fan1.lastread);
+      int fan1_State = atoi((char *)fan1.lastread);
+      digitalWrite(Relay3, fan1_State);
+    }
+    if (subscription == &fan2)
+    {
+      Serial.print(F("Got: "));
+      Serial.println((char *)fan2.lastread);
+      int fan2_State = atoi((char *)fan2.lastread);
+      digitalWrite(Relay4, fan2_State);
+    }
+    }
+     if(mqtt.connected())
+  {
+    int data=analogRead(ldr);
+    Serial.print("\nsending data");
+    Serial.print(data);
+    if(feed.publish(data))
+    {
+      Serial.println("success");
+      
+    }
+    else
+    {
+      Serial.println("fail");
+    }
+    delay(1001);
+  }
+   if(mqtt.connected())
+  {
+    int irv=digitalRead(ir);
+    Serial.print("\nsending data");
+    Serial.print(irv);
+    if(feed.publish(irv))
+    {
+      Serial.println("success");
+      
+    }
+    else
+    {
+      Serial.println("fail");
+    }
+    delay(1001);
+  }
+    }
+    
+  
+ 
+
+
+
